@@ -44,8 +44,9 @@ Encoder rot_enc(A2, A1);  // rotary encoder: D5, D6
 #define MODE_HEX 11  // jack's hex clock: a day is 0x0000..0xFFFF, where the highest byte is displayed as hex and lowest as bits
 #define MODE_GAME_OF_LIFE 12  // conways game of life
 #define MODE_4X4 13  // conways game of life
+#define MODE_CUSTOM_BITMAP 14  // bitmap
 
-#define NUM_CLOCK_MODES 14  //
+#define NUM_CLOCK_MODES 15  //
 
 // every time you press button A, the program mode advances
 #define PGM_MODE_TM 0  // time
@@ -163,6 +164,9 @@ unsigned long approx_millis = 0;  // approximate millis
 
 // game of life in RGB! 0 is current buffer, 1 is future
 byte game_of_life[2][3*64];
+
+// custom bitmap via serial
+byte custom_bitmap[3*64];
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NEOPIXEL_NUM, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -1036,15 +1040,13 @@ void handleSerial()
         char c = Serial.read();
         if (c == '\n')
         {
-            Serial.print("CMD: ");
-            Serial.println(buff);
             // read command
             if (buffi > 0)
             {
                 switch(buff[0])
                 {
                     case 'c':
-                        if (clock_mode != MODE_SET_CLOCK && buffi > 1)
+                        if (clock_mode != MODE_SET_CLOCK && buffi >= 2)
                         {
                             int newmode = atoi(buff + 1) % NUM_CLOCK_MODES;
                             Serial.print("Set clock mode: ");
@@ -1052,6 +1054,21 @@ void handleSerial()
                             clock_mode_offset = newmode - clock_mode;
                         }
                         break;
+					case 's':
+						if (buffi >= 5)
+						{
+							int n = buff[1];
+							int r = buff[2];
+							int g = buff[3];
+							int b = buff[4];
+							if (n < 64)
+							{
+								custom_bitmap[3 * 64] = r;
+								custom_bitmap[3 * 64 + 1] = g;
+								custom_bitmap[3 * 64 + 2] = b;
+							}
+						}
+						break;
                 }
             }
             
@@ -1073,6 +1090,15 @@ void handleSerial()
             }
         }
     }
+}
+
+void draw_custom_bitmap()
+{
+	for (uint16_t i = 0; i < 64; i++)
+	{
+		byte* pixel = custom_bitmap + i;
+		pixels.setPixelColor(i, *pixel, *(pixel + 1), *(pixel + 2));
+	}
 }
 
 void loop () 
@@ -1348,6 +1374,8 @@ void loop ()
         case MODE_4X4:
           draw_clock_4x4(now, col_a, col_b);
           break;
+		case MODE_CUSTOM_BITMAP:
+			draw_custom_bitmap();
         case MODE_SET_CLOCK:
           // edit clock  
           draw_edit_clock(now, hour_inc, minute_inc);    
