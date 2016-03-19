@@ -60,6 +60,8 @@ Encoder rot_enc(A2, A1);  // rotary encoder: D5, D6
 #define PGM_TM_HOUR 1
 #define PGM_TM_MINUTE 2
 
+#define SER_BUF_LEN 16
+
 #ifdef __AVR__
  #include <avr/io.h>
  #include <avr/pgmspace.h>
@@ -186,6 +188,7 @@ int noteDurations[] = {
 
 
 int clock_mode = MODE_NORMAL;
+int clock_mode_offset = 0;
 int last_clock_mode = MODE_NORMAL;
 int pgm_mode = PGM_MODE_LO;
 
@@ -1023,6 +1026,54 @@ void draw_clock_4x4(DateTime dt, RGB col_a, RGB col_b) {
 //  }
 }
 
+char buff[SER_BUF_LEN + 1];
+int buffi = 0;
+
+void handleSerial()
+{
+    while (Serial.available())
+    {
+        char c = Serial.read();
+        if (c == '\n')
+        {
+            Serial.print("CMD: ");
+            Serial.println(buff);
+            // read command
+            if (buffi > 0)
+            {
+                switch(buff[0])
+                {
+                    case 'c':
+                        if (clock_mode != MODE_SET_CLOCK && buffi > 1)
+                        {
+                            int newmode = atoi(buff + 1) % NUM_CLOCK_MODES;
+                            Serial.print("Set clock mode: ");
+                            Serial.println(newmode);
+                            clock_mode_offset = newmode - clock_mode;
+                        }
+                        break;
+                }
+            }
+            
+            // clear the buffer
+            for (int i = 0; i < SER_BUF_LEN; i++)
+            {
+                buff[i] = 0;
+            }
+            
+            buffi = 0;
+        }
+        else
+        {
+            if (buffi < SER_BUF_LEN)
+            {
+                buff[buffi] = c;
+                buffi++;
+                buff[buffi + 0] = 0;
+            }
+        }
+    }
+}
 
 void loop () 
 {
@@ -1091,6 +1142,8 @@ void loop ()
             but_counter = 0;
       }
 
+    handleSerial();
+
       switch (pgm_mode) {
         case PGM_MODE_TM:
           if ((last_but_a_val == LOW) && (but_a_val == HIGH)) {  // wait until the button is released
@@ -1155,7 +1208,7 @@ void loop ()
             new_enc_pos += 4*NUM_CLOCK_MODES;
             rot_enc.write(new_enc_pos);
           }
-          clock_mode = (new_enc_pos / 4) % NUM_CLOCK_MODES;
+          clock_mode = ((new_enc_pos / 4) + clock_mode_offset )% NUM_CLOCK_MODES;
           // button a readout
           if ((last_but_a_val == LOW) && (but_a_val == HIGH)) {
             write_eeprom();
