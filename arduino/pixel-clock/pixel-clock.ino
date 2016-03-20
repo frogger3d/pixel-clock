@@ -1045,7 +1045,7 @@ void handleSerial()
             {
                 switch(buff[0])
                 {
-                    case 'c':
+                    case 'c': // c12
                         if (clock_mode != MODE_SET_CLOCK && buffi >= 2)
                         {
                             int newmode = atoi(buff + 1) % NUM_CLOCK_MODES;
@@ -1054,8 +1054,8 @@ void handleSerial()
                             clock_mode_offset = newmode - clock_mode;
                         }
                         break;
-					case 's':
-						if (buffi >= 5)
+					case 's': // sRGB
+						if (buffi >= 4)
 						{
                             byte r = buff[1];
 							byte g = buff[2];
@@ -1063,13 +1063,31 @@ void handleSerial()
 							byte n = buff[4];
                             if (n < 64)
 							{
-                                int pixelIndex = 3 * n;
-								custom_bitmap[pixelIndex] = r;
+                                int pixelIndex                = 3 * n;
+								custom_bitmap[pixelIndex]     = r;
 								custom_bitmap[pixelIndex + 1] = g;
 								custom_bitmap[pixelIndex + 2] = b;
 							}
 						}
 						break;
+                    case 't': // t14:34.40
+                        if (buffi >= 9)
+                        {
+                            int hours   = atoi(buff + 1);
+                            int minutes = atoi(buff + 4);
+                            int seconds = atoi(buff + 7);
+                            Serial.print("Set clock to ");
+                            Serial.print(hours);
+                            Serial.print(":");
+                            Serial.print(minutes);
+                            Serial.print(".");
+                            Serial.println(seconds);
+                            DateTime dt = rtc.now();
+                            dt = DateTime(dt.year(), dt.month(), dt.date(),
+                                          hours, minutes, seconds, dt.dayOfWeek());
+                            rtc.setDateTime(dt);                
+                        }
+                        break;
                 }
             }
             
@@ -1087,7 +1105,7 @@ void handleSerial()
             {
                 buff[buffi] = c;
                 buffi++;
-                buff[buffi + 0] = 0;
+                buff[buffi] = 0;
             }
         }
     }
