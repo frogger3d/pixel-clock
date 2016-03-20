@@ -166,7 +166,7 @@ unsigned long approx_millis = 0;  // approximate millis
 byte game_of_life[2][3*64];
 
 // custom bitmap via serial
-byte custom_bitmap[3*64];
+byte custom_bitmap[3*64] = {};
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NEOPIXEL_NUM, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -247,7 +247,7 @@ void setup ()
 
     pinMode(LDR_PIN, INPUT_PULLUP);
 
-    Serial.begin(57600);
+    Serial.begin(9600);
     
     Wire.begin();
     rtc.begin();
@@ -1057,15 +1057,16 @@ void handleSerial()
 					case 's':
 						if (buffi >= 5)
 						{
-							int n = buff[1];
-							int r = buff[2];
-							int g = buff[3];
-							int b = buff[4];
-							if (n < 64)
+                            byte r = buff[1];
+							byte g = buff[2];
+							byte b = buff[3];
+							byte n = buff[4];
+                            if (n < 64)
 							{
-								custom_bitmap[3 * 64] = r;
-								custom_bitmap[3 * 64 + 1] = g;
-								custom_bitmap[3 * 64 + 2] = b;
+                                int pixelIndex = 3 * n;
+								custom_bitmap[pixelIndex] = r;
+								custom_bitmap[pixelIndex + 1] = g;
+								custom_bitmap[pixelIndex + 2] = b;
 							}
 						}
 						break;
@@ -1094,10 +1095,10 @@ void handleSerial()
 
 void draw_custom_bitmap()
 {
-	for (uint16_t i = 0; i < 64; i++)
+	for (uint16_t n = 0; n < 64; n ++)
 	{
-		byte* pixel = custom_bitmap + i;
-		pixels.setPixelColor(i, *pixel, *(pixel + 1), *(pixel + 2));
+        uint16_t i = 3 * n;
+        pixels.setPixelColor(n, pixels.Color(custom_bitmap[i], custom_bitmap[i + 1], custom_bitmap[i + 2]));
 	}
 }
 
@@ -1375,7 +1376,8 @@ void loop ()
           draw_clock_4x4(now, col_a, col_b);
           break;
 		case MODE_CUSTOM_BITMAP:
-			draw_custom_bitmap();
+		    draw_custom_bitmap();
+           break;
         case MODE_SET_CLOCK:
           // edit clock  
           draw_edit_clock(now, hour_inc, minute_inc);    
