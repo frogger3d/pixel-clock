@@ -5,6 +5,7 @@ ds3231 realtime clock + 8x8 ws2812 "display" (aka neopixels) = awesome clock!
 
 */
 
+#include <Firmata.h>
 #include <EEPROM.h>
 // Date and time functions using RX8025 RTC connected via I2C and Wire lib
 
@@ -248,7 +249,11 @@ void setup ()
     pinMode(LDR_PIN, INPUT_PULLUP);
 
     Serial.begin(9600);
-    
+
+    Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+    Firmata.attach(START_SYSEX, sysexCallback);
+    Firmata.begin(Serial);
+  
     Wire.begin();
     rtc.begin();
     pixels.begin();
@@ -1033,81 +1038,42 @@ void draw_clock_4x4(DateTime dt, RGB col_a, RGB col_b) {
 char buff[SER_BUF_LEN + 1];
 int buffi = 0;
 
-void handleSerial()
+void sysexCallback(byte command, byte byteCount, byte *arrayPointer)
 {
-    while (Serial.available())
+    switch(command)
     {
-        char c = Serial.read();
-        if (c == '\n')
-        {
-            // read command
-            if (buffi > 0)
+        case 'c': // clock mode
+            if (clock_mode != MODE_SET_CLOCK && byteCount == 1)
             {
-                switch(buff[0])
+                int newmode = (int)arrayPointer % NUM_CLOCK_MODES;
+                clock_mode_offset = newmode - clock_mode;
+            }
+            break;
+        case 's': // single pixel
+            if (byteCount == 4)
+            {
+                byte n = arrayPointer[3]; // pixel index
+                if (n < 64)
                 {
-                    case 'c': // c12
-                        if (clock_mode != MODE_SET_CLOCK && buffi >= 2)
-                        {
-                            int newmode = atoi(buff + 1) % NUM_CLOCK_MODES;
-                            Serial.print("Set clock mode: ");
-                            Serial.println(newmode);
-                            clock_mode_offset = newmode - clock_mode;
-                        }
-                        break;
-					case 's': // sRGB
-						if (buffi >= 4)
-						{
-                            byte r = buff[1];
-							byte g = buff[2];
-							byte b = buff[3];
-							byte n = buff[4];
-                            if (n < 64)
-							{
-                                int pixelIndex                = 3 * n;
-								custom_bitmap[pixelIndex]     = r;
-								custom_bitmap[pixelIndex + 1] = g;
-								custom_bitmap[pixelIndex + 2] = b;
-							}
-						}
-						break;
-                    case 't': // t14:34.40
-                        if (buffi >= 9)
-                        {
-                            int hours   = atoi(buff + 1);
-                            int minutes = atoi(buff + 4);
-                            int seconds = atoi(buff + 7);
-                            Serial.print("Set clock to ");
-                            Serial.print(hours);
-                            Serial.print(":");
-                            Serial.print(minutes);
-                            Serial.print(".");
-                            Serial.println(seconds);
-                            DateTime dt = rtc.now();
-                            dt = DateTime(dt.year(), dt.month(), dt.date(),
-                                          hours, minutes, seconds, dt.dayOfWeek());
-                            rtc.setDateTime(dt);                
-                        }
-                        break;
+                    byte *tpixel = custom_bitmap + 3 * n;
+                    tpixel[0] = arrayPointer[0]; // R
+                    tpixel[1] = arrayPointer[1]; // G
+                    tpixel[2] = arrayPointer[2]; // B
                 }
             }
-            
-            // clear the buffer
-            for (int i = 0; i < SER_BUF_LEN; i++)
+            break;
+        case 't': // time
+            if (byteCount == 3)
             {
-                buff[i] = 0;
+                int hours   = (int)arrayPointer[0];
+                int minutes = (int)arrayPointer[1];
+                int seconds = (int)arrayPointer[2];
+                DateTime dt = rtc.now();
+                dt = DateTime(dt.year(), dt.month(), dt.date(),
+                              hours, minutes, seconds, dt.dayOfWeek());
+                rtc.setDateTime(dt);                
             }
-            
-            buffi = 0;
-        }
-        else
-        {
-            if (buffi < SER_BUF_LEN)
-            {
-                buff[buffi] = c;
-                buffi++;
-                buff[buffi] = 0;
-            }
-        }
+            break;
     }
 }
 
@@ -1129,7 +1095,7 @@ void loop ()
        start_approx_millis_time = millis();
     }
     approx_millis = millis() - start_approx_millis_time;
-
+    
     last_but_a_val = but_a_val;
     but_a_val = digitalRead(BUT_A_PIN);
 
@@ -1186,8 +1152,11 @@ void loop ()
       } else {
             but_counter = 0;
       }
-
-    handleSerial();
+      
+        while (Firmata.available())
+        {
+            Firmata.processInput();
+        }
 
       switch (pgm_mode) {
         case PGM_MODE_TM:
