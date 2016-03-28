@@ -5,7 +5,7 @@
     xmlns:local="using:PixelClockEditor"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:tk="using:WinRTXamlToolkit.Controls"
+    xmlns:cm="using:ColorPickerUwp"    
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
@@ -13,9 +13,11 @@
             <ColumnDefinition/>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
+        
         <ScrollViewer>
-            <TextBlock x:Name="rcvdText" Margin="0 50" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Text}" Margin="0 50" TextWrapping="Wrap"/>
         </ScrollViewer>
+        
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="1">
             <StackPanel.Resources>
                 <Style TargetType="Button">
@@ -24,18 +26,17 @@
                 </Style>
             </StackPanel.Resources>
             <StackPanel>
-                <TextBox Text="1" x:Name="clockMode"/>
-                <Button Click="SetClockMode">Set clock mode</Button>
+                <TextBox Text="{Binding ClockMode}"/>
+                <Button Command="{Binding SetClockMode}">Set clock mode</Button>
             </StackPanel>
-            <Button Click="SetTime">Set time</Button>
-            <Border>
-                <StackPanel Margin="0 10 0 0">
-                    <Button Click="greenclick" Background="DarkGreen" Foreground="White">Green</Button>
-                    <Button Click="redclick" Background="DarkRed" Foreground="White">Red</Button>
-                    <Button Click="blueclick" Background="DarkBlue" Foreground="White">Blue</Button>
-                    <Button Click="BlackClick" Background="Black" Foreground="White">Black</Button>
-                </StackPanel>
-            </Border>
+            <Button Command="{Binding SetTime}">Set time</Button>
+            <Button Command="{Binding SendColor}">
+                <Button.Background>
+                    <SolidColorBrush Color="{Binding Color}"/>
+                </Button.Background>    
+                Send color
+            </Button>
+            <cm:ColorMap x:Name="colorMap" Color="{Binding Color, Mode=TwoWay}" />
         </StackPanel>
     </Grid>
 </Page>
