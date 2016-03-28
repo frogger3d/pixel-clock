@@ -1,4 +1,5 @@
-﻿using Windows.ApplicationModel;
+﻿using System.Linq;
+using Windows.ApplicationModel;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -18,6 +19,22 @@ namespace PixelClockEditor
             var vm = new MainViewModel();
             vm.Initialize();
             this.DataContext = vm;
+        }
+
+        private void ItemChanged(object sender, SelectionChangedEventArgs e)
+        {
+            //var item = e.AddedItems.FirstOrDefault();
+            //var vm = this.DataContext as MainViewModel;
+            //vm.SelectedPixel = item as PixelViewModel;
+        }
+
+        private void ItemClick(object sender, ItemClickEventArgs e)
+        {
+            var vm = e.ClickedItem as PaletteItemViewModel;
+            if (vm != null)
+            {
+                vm.Command?.Execute(null);
+            }
         }
     }
 }

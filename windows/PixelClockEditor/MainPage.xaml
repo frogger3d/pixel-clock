@@ -13,11 +13,73 @@
             <ColumnDefinition/>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        
-        <ScrollViewer>
-            <TextBlock Text="{Binding Text}" Margin="0 50" TextWrapping="Wrap"/>
-        </ScrollViewer>
-        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <GridView ItemsSource="{Binding Pixels}" 
+                  SelectedItem="{Binding SelectedPixel, Mode=TwoWay}" 
+                  SelectionMode="Single" 
+                  IsItemClickEnabled="False"
+                  VerticalAlignment="Center" HorizontalAlignment="Center">
+
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                </Style>
+            </GridView.ItemContainerStyle>
+            
+            <GridView.ItemTemplate>
+                <DataTemplate>
+                    <Border>
+                        <Border.Background>
+                            <SolidColorBrush Color="{Binding Color}"/>
+                        </Border.Background>
+                        <TextBlock Text="{Binding PixelIndex}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
+                </DataTemplate>
+            </GridView.ItemTemplate>
+            
+            <GridView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsWrapGrid Orientation="Horizontal"
+                                   MaximumRowsOrColumns="8"/>
+                </ItemsPanelTemplate>
+            </GridView.ItemsPanel>
+        </GridView>
+
+        <GridView ItemsSource="{Binding Palette}" Grid.Row="1"
+                  SelectionMode="None" IsItemClickEnabled="True" ItemClick="ItemClick" 
+                  VerticalAlignment="Top" HorizontalAlignment="Center">
+
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                </Style>
+            </GridView.ItemContainerStyle>
+
+            <GridView.ItemTemplate>
+                <DataTemplate>
+                    <Border>
+                        <Border.Background>
+                            <SolidColorBrush Color="{Binding Color}"/>
+                        </Border.Background>
+                    </Border>
+                </DataTemplate>
+            </GridView.ItemTemplate>
+
+            <GridView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsWrapGrid Orientation="Horizontal"
+                                   MaximumRowsOrColumns="8"/>
+                </ItemsPanelTemplate>
+            </GridView.ItemsPanel>
+        </GridView>
+
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="1">
             <StackPanel.Resources>
                 <Style TargetType="Button">
@@ -25,18 +87,26 @@
                     <Setter Property="Margin" Value="2"/>
                 </Style>
             </StackPanel.Resources>
+            
             <StackPanel>
                 <TextBox Text="{Binding ClockMode}"/>
                 <Button Command="{Binding SetClockMode}">Set clock mode</Button>
             </StackPanel>
+            
             <Button Command="{Binding SetTime}">Set time</Button>
+            
             <Button Command="{Binding SendColor}">
                 <Button.Background>
                     <SolidColorBrush Color="{Binding Color}"/>
                 </Button.Background>    
                 Send color
             </Button>
-            <cm:ColorMap x:Name="colorMap" Color="{Binding Color, Mode=TwoWay}" />
+            <cm:ColorMap x:Name="colorMap" 
+                         Color="{Binding Color, Mode=TwoWay}" />           
         </StackPanel>
+
+        <ScrollViewer Grid.Column="1" Grid.Row="1">
+            <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+        </ScrollViewer>
     </Grid>
 </Page>

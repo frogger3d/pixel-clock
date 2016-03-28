@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Reactive.Linq;
 using Microsoft.Maker.Firmata;
 using Microsoft.Maker.RemoteWiring;
 using Microsoft.Maker.Serial;
@@ -19,6 +21,7 @@ namespace PixelClockEditor
         private string text;
         private string clockMode;
         private Color color;
+        private PixelViewModel seletedPixel;
 
         public MainViewModel()
         {
@@ -49,6 +52,56 @@ namespace PixelClockEditor
             });
 
             this.Color = Colors.White;
+
+            this.Pixels = Enumerable.Range(0, 64)
+                .Select(i => new PixelViewModel() { PixelIndex = i.ToString() })
+                .ToList();
+
+            this.WhenAnyValue(v => v.Color)
+                .Subscribe(c => 
+                {
+                    if (this.SelectedPixel != null)
+                    {
+                        this.SelectedPixel.Color = c;
+                    }
+                });
+
+            this.WhenAnyValue(v => v.SelectedPixel)
+                .Subscribe(p =>
+                {
+                    if (p != null)
+                    {
+                        p.Color = this.Color;
+                    }
+                });
+
+            this.WhenAnyValue(v => v.Color)
+                .Throttle(TimeSpan.FromSeconds(1))
+                .ObserveOnDispatcher()
+                .Subscribe(color =>
+                {
+                    if (Palette.All(p => p.Color != color))
+                    {
+                        while (this.Palette.Count > 7)
+                        {
+                            Palette.RemoveAt(7);
+                        }
+                        var vm = new PaletteItemViewModel(color);
+                        vm.Command = ReactiveCommand.Create();
+                        vm.Command.Subscribe(_ => this.Color = vm.Color);
+                        Palette.Insert(0, vm);
+                    }
+                });
+
+            this.Palette = new ReactiveList<PaletteItemViewModel>(
+                Enumerable.Range(0, 8)
+                    .Select(i =>
+                    {
+                        var vm = new PaletteItemViewModel(Colors.Black);
+                        vm.Command = ReactiveCommand.Create();
+                        vm.Command.Subscribe(_ => this.Color = vm.Color);
+                        return vm;
+                    }));
         }
 
         public string Text
@@ -68,6 +121,16 @@ namespace PixelClockEditor
             get { return this.color; }
             set { this.RaiseAndSetIfChanged(ref this.color, value); }
         }
+
+        public PixelViewModel SelectedPixel
+        {
+            get { return this.seletedPixel; }
+            set { this.RaiseAndSetIfChanged(ref this.seletedPixel, value); }
+        }
+
+        public List<PixelViewModel> Pixels { get; set; }
+
+        public ReactiveList<PaletteItemViewModel> Palette { get; set; }
 
         public ReactiveCommand<object> SendColor { get; }
         public ReactiveCommand<object> SetTime { get; }
@@ -120,5 +183,16 @@ namespace PixelClockEditor
         {
             return new byte[] { color.R, color.G, color.B, (byte)(pixel & 0xff), };
         }
+    }
+
+    public class PixelViewModel : ReactiveObject
+    {
+        private Color color;
+        public Color Color
+        {
+            get { return this.color; }
+            set { this.RaiseAndSetIfChanged(ref this.color, value); }
+        }
+        public string PixelIndex { get; set; }
     }
 }
